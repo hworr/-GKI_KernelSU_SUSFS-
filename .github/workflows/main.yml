@@ -20,10 +20,9 @@ on:
         type: choice
         options:
           - FULL
-          - KSUN+SUSFS+KASUMI+BBG+NET+DS
-          - KSUN+SUSFS+KASUMI+BBG
-          - KSUN+SUSFS+KASUMI
-          - KSUN+SUSFS
+          - KSUN+KASUMI+BBG+NET+DS
+          - KSUN+KASUMI+BBG
+          - KSUN+KASUMI
           - KSUN
           - NONE
         default: FULL
@@ -34,11 +33,6 @@ on:
         default: ""
       kasumi_branch:
         description: "Kasumi branch or commit (empty = latest main branch tip)"
-        type: string
-        required: false
-        default: ""
-      susfs_commit:
-        description: "SUSFS commit (empty = latest branch tip)"
         type: string
         required: false
         default: ""
@@ -83,7 +77,6 @@ jobs:
       config_file: .github/config/muzel.json
       feature_set: ${{ inputs.feature_set || 'FULL' }}
       ksu_branch: ${{ inputs.ksu_branch }}
-      susfs_commit: ${{ inputs.susfs_commit }}
       kasumi_branch: ${{ inputs.kasumi_branch }}
     secrets: inherit
 
@@ -326,7 +319,7 @@ jobs:
       run: |
         set -euo pipefail
 
-        KSU_REPO="https://github.com/KOWX712/KernelSU.git"
+        KSU_REPO="https://github.com/doubledashdot/KernelSU.git"
         KSU_INPUT="${{ inputs.ksu_branch }}"
         if [ -z "$KSU_INPUT" ]; then
           KSU_INPUT="master"
@@ -334,12 +327,12 @@ jobs:
 
         if git ls-remote --heads "$KSU_REPO" "$KSU_INPUT" | grep -q .; then
           echo "Cloning KernelSU from branch: $KSU_INPUT"
-          git clone --branch "$KSU_INPUT" "$KSU_REPO" /tmp/kernelsu
+          git clone --branch "$KSU_INPUT" --depth=50 "$KSU_REPO" /tmp/kernelsu
           cd /tmp/kernelsu
           KSU_COMMIT=$(git rev-parse HEAD)
         else
           echo "Cloning KernelSU from master branch, then checking out commit: $KSU_INPUT"
-          git clone --branch master "$KSU_REPO" /tmp/kernelsu
+          git clone --depth=50 "$KSU_REPO" /tmp/kernelsu
           cd /tmp/kernelsu
           git fetch --depth=50 origin "$KSU_INPUT"
           git checkout "$KSU_INPUT"
@@ -351,11 +344,11 @@ jobs:
         KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
         KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag")
 
-        MANAGER_RUN_ID=$(curl -fsSL "https://api.github.com/repos/KOWX712/KernelSU/actions/workflows/build-manager-ci.yml/runs?head_sha=${KSU_COMMIT}" | jq -r '.workflow_runs[0].id // empty')
+        MANAGER_RUN_ID=$(curl -fsSL "https://api.github.com/repos/doubledashdot/KernelSU/actions/workflows/build-manager-ci.yml/runs?head_sha=${KSU_COMMIT}" | jq -r '.workflow_runs[0].id // empty')
         if [[ -n "${MANAGER_RUN_ID:-}" ]]; then
-          KSU_MANAGER="https://github.com/KOWX712/KernelSU/actions/runs/${MANAGER_RUN_ID}"
+          KSU_MANAGER="https://github.com/doubledashdot/KernelSU/actions/runs/${MANAGER_RUN_ID}"
         else
-          KSU_MANAGER="https://github.com/KOWX712/KernelSU/actions/workflows/build-manager-ci.yml"
+          KSU_MANAGER="https://github.com/doubledashdot/KernelSU/actions/workflows/build-manager-ci.yml"
         fi
 
         echo "Commits count: $COMMITS_COUNT"

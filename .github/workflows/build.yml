@@ -31,10 +31,6 @@ on:
         required: false
         type: string
         default: ""
-      susfs_commit:
-        required: false
-        type: string
-        default: ""
       kasumi_branch:
         required: false
         type: string
@@ -131,17 +127,6 @@ jobs:
       uses: ./.github/actions/kernelsu
       with:
         ksu_branch: ${{ inputs.ksu_branch }}
-
-    - name: SUSFS
-      if: contains(inputs.feature_set, 'SUSFS') || inputs.feature_set == 'FULL'
-      uses: ./.github/actions/susfs
-      with:
-        susfs_commit: ${{ inputs.susfs_commit }}
-        version: ${{ inputs.version }}
-        android_version: ${{ inputs.android_version }}
-        kernel_version: ${{ inputs.kernel_version }}
-        os_patch_level: ${{ inputs.os_patch_level }}
-        sublevel: ${{ steps.extract.outputs.sublevel }}
 
     - name: Kasumi LKM
       if: contains(inputs.feature_set, 'KASUMI') || inputs.feature_set == 'FULL'
@@ -335,11 +320,6 @@ jobs:
         KSU_VER="${KSU_VERSION:-N/A}"
         KSU_TAG="${KSU_GIT_TAG:-N/A}"
 
-        SUSFS_VER="N/A"
-        if [ -f "${{ github.workspace }}/kernel/common/include/linux/susfs.h" ]; then
-          SUSFS_VER=$(grep '#define SUSFS_VERSION' "${{ github.workspace }}/kernel/common/include/linux/susfs.h" | awk -F'"' '{print $2}' || echo "N/A")
-        fi
-
         CCACHE_HIT="${CCACHE_HIT_RATE:-N/A}"
 
         {
@@ -354,7 +334,6 @@ jobs:
           fi
           echo "| **KSU Version** | ${KSU_VER} |"
           echo "| **KSU Tag** | ${KSU_TAG} |"
-          echo "| **SUSFS Version** | ${SUSFS_VER} |"
           echo "| **Feature Set** | ${{ inputs.feature_set }} |"
           echo "| **Variant** | ${{ inputs.variant }} |"
           echo

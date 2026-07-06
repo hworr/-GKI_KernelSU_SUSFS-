@@ -13,11 +13,10 @@ runs:
   steps:
     - name: Apply NTSync Patch
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/aosp
+      working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
 
-        echo "Using patch: $(basename $NTSYNC_PATCH)"
         if [[ ${{ inputs.version }} = "android16-6.12" ]]; then
           echo "Removing pre-existing ntsync files for android16-6.12"
           rm -f include/uapi/linux/ntsync.h
@@ -25,18 +24,18 @@ runs:
         fi
 
         if [[ ${{ inputs.version }} = "android13-5.10" ]]; then
-          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_android12-5.10.patch ${{ github.workspace }}/kernel/common
-          patch -p1 ntsync_compat_android12-5.10.patch
+          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_android12-5.10.patch .
+          patch -p1 < ntsync_compat_android12-5.10.patch
         elif [[ ${{ inputs.version }} = "android14-5.15" ]]; then
-          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_android13-5.15.patch ${{ github.workspace }}/kernel/common
-          patch -p1 ntsync_compat_android13-5.15.patch
+          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_android13-5.15.patch .
+          patch -p1 < ntsync_compat_android13-5.15.patch
         else
-          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_${{ inputs.version }}.patch ${{ github.workspace }}/kernel/common
-          patch -p1 ntsync_compat_${{ inputs.version }}.patch
+          cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_compat_${{ inputs.version }}.patch .
+          patch -p1 < ntsync_compat_${{ inputs.version }}.patch
         fi
 
-        cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_base.patch ${{ github.workspace }}/kernel/common
+        cp ${{ github.workspace }}/kernel_patches/common/ntsync/ntsync_base.patch .
         patch -p1 < ntsync_base.patch
-        cat >> "${{ github.workspace }}/kernel/common/arch/arm64/configs/gki_defconfig" << 'EOF'
+        cat >> "arch/arm64/configs/gki_defconfig" << 'EOF'
         CONFIG_NTSYNC=y
         EOF

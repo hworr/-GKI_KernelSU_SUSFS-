@@ -1,0 +1,73 @@
+name: Setup Kasumi LKM
+description: Download and integrate Anatdx/Kasumi out-of-tree kernel module
+inputs:
+  kasumi_branch:
+    description: 'Kasumi branch or commit (empty = latest main branch tip)'
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Download Kasumi
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        set -euo pipefail
+
+        KASUMI_REPO="https://github.com/Anatdx/Kasumi.git"
+        KASUMI_INPUT="${{ inputs.kasumi_branch }}"
+        if [ -z "$KASUMI_INPUT" ]; then
+          KASUMI_INPUT="main"
+        fi
+
+        echo "Cloning Kasumi from $KASUMI_REPO (branch: $KASUMI_INPUT)..."
+        git clone --depth=1 --branch "$KASUMI_INPUT" "$KASUMI_REPO" kasumi
+
+        echo "Kasumi cloned successfully."
+        echo "Commit: $(git -C kasumi log -1 --format='%H')"
+        echo "Message: $(git -C kasumi log -1 --format='%s')"
+
+    - name: Build Kasumi Module
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        set -euo pipefail
+
+        KERNEL_SRC="${{ github.workspace }}/kernel"
+        KASUMI_SRC="${{ github.workspace }}/kernel/kasumi/src"
+
+        # Prepare kernel module build dependencies
+        if [ -d "$KERNEL_SRC/out" ]; then
+          # If already built, use the output tree
+          make -C "$KERNEL_SRC" ARCH=arm64 \
+            O="$KERNEL_SRC/out" \
+            modules_prepare
+          make -C "$KERNEL_SRC" ARCH=arm64 \
+            O="$KERNEL_SRC/out" \
+            M="$KASUMI_SRC" \
+            modules
+        else
+          echo "No kernel output directory found. Building Kasumi module..."
+          make -C "$KERNEL_SRC" ARCH=arm64 \
+            M="$KASUMI_SRC" \
+            modules
+        fi
+
+        # Copy module to output
+        if [ -f "$KASUMI_SRC/kasumi_lkm.ko" ]; then
+          mkdir -p "${{ github.workspace }}/kasumi-out"
+          cp "$KASUMI_SRC/kasumi_lkm.ko" "${{ github.workspace }}/kasumi-out/"
+          echo "Kasumi module built: $KASUMI_SRC/kasumi_lkm.ko"
+        else
+          echo "WARNING: kasumi_lkm.ko not found at $KASUMI_SRC/"
+          find "$KASUMI_SRC" -name "*.ko" 2>/dev/null || true
+        fi
+
+    - name: Enable Kasumi Kernel Configs
+      uses: ./.github/actions/set-kernel-config
+      with:
+        config_list: |
+          CONFIG_KALLSYMS=y
+          CONFIG_KPROBES=y
+          CONFIG_FTRACE=y

@@ -12,12 +12,17 @@ on:
         required: false
         type: string
       ksu_branch:
-        description: "KernelSU branch or commit (empty = latest dev)"
+        description: "KernelSU branch or commit (empty = latest master)"
         required: false
         type: string
         default: ""
       susfs_commit:
         description: "SUSFS commit hash (empty = latest on auto-derived branch)"
+        required: false
+        type: string
+        default: ""
+      kasumi_branch:
+        description: "Kasumi branch or commit (empty = latest main)"
         required: false
         type: string
         default: ""
@@ -42,8 +47,6 @@ jobs:
 
           CONFIG_JSON=$(cat "${{ inputs.config_file }}" | jq -c .)
 
-          # Build { "include": [ {android_version:..., kernel_version:..., sublevel:..., os_patch_level:..., variant: ...}, ... ] }
-          # Always include Normal, and add any explicit per-item variant from the config.
           FINAL=$(jq -cn \
             --argjson cfg "$CONFIG_JSON" '
             ($cfg.version | split("-")) as $version_parts
@@ -94,4 +97,5 @@ jobs:
       feature_set: ${{ inputs.feature_set }}
       ksu_branch: ${{ inputs.ksu_branch }}
       susfs_commit: ${{ inputs.susfs_commit }}
+      kasumi_branch: ${{ inputs.kasumi_branch }}
     secrets: inherit

@@ -31,12 +31,15 @@ runs:
         set -euo pipefail
 
         SUBLEVEL="${{ inputs.sublevel }}"
-        if [ -f "${{ github.workspace }}/kernel/common/Makefile" ]; then
-          EXTRACTED="$(grep '^SUBLEVEL = ' "${{ github.workspace }}/kernel/common/Makefile" | awk '{print $3}')"
-          if [ "${{ inputs.os_patch_level }}" = "lts" ] && [ -n "$EXTRACTED" ]; then
-            SUBLEVEL="$EXTRACTED"
+        for MF in "${{ github.workspace }}/kernel/common/Makefile" "${{ github.workspace }}/kernel/aosp/Makefile" "${{ github.workspace }}/kernel/Makefile"; do
+          if [ -f "$MF" ]; then
+            EXTRACTED="$(grep '^SUBLEVEL = ' "$MF" | awk '{print $3}')"
+            if [ "${{ inputs.os_patch_level }}" = "lts" ] && [ -n "$EXTRACTED" ]; then
+              SUBLEVEL="$EXTRACTED"
+            fi
+            break
           fi
-        fi
+        done
 
         FILE_NAME="${{ inputs.kernel_version }}.${SUBLEVEL}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}"
         # Append variant only when it's provided and not the default 'Normal'

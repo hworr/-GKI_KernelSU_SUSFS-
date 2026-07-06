@@ -1,11 +1,11 @@
 name: 'Build Kernel'
-description: 'Builds kernel using legacy build.sh or Bazel (kleaf)'
+description: 'Builds kernel using Bazel (kleaf) for Pixel 10 muzel'
 inputs:
   bypass:
     description: 'Whether to add the bypass hack or not'
     required: true
   version:
-    description: 'Kernel config version (e.g., android14-6.1)'
+    description: 'Kernel config version (e.g., android16-6.6)'
     required: true
 
 runs:
@@ -34,55 +34,22 @@ runs:
         echo "Bypass hack not applied as per input parameter."
       fi
 
-  - name: Setup Kernel Configs
-    if: false
-    uses: ./.github/actions/set-kernel-config
-  
-  - name: 'Build Kernel'
+  - name: 'Build Kernel (Muzel)'
     shell: bash
     working-directory: ${{ github.workspace }}/kernel
     run: |
-      cat common/arch/arm64/configs/gki_defconfig
-      sed -i 's/check_defconfig//' ./common/build.config.gki
-      if [ -f "build/build.sh" ]; then
-        BUILD_GKI_ARTIFACTS= \
-        BUILD_GKI_CERTIFICATION_TOOLS=0 \
-        BUILD_SYSTEM_DLKM=0 \
-        SKIP_VENDOR_BOOT=1 \
-        SKIP_EXT_MODULES=1 \
-        SKIP_CP_KERNEL_HDR=1 \
-        OUT_DIR="/home/runner/out" \
-        LTO=thin \
-        BUILD_CONFIG=common/build.config.gki.aarch64 \
-        build/build.sh -j"$(nproc)" \
-        CC="/usr/bin/ccache clang" \
-        CXX="/usr/bin/ccache clang+" \
-        HOSTCC="/usr/bin/ccache clang" \
-        HOSTCXX="/usr/bin/ccache clang+" \
-        LD="${{ github.workspace }}/kernel/common/ld-wrapper" \
-        HOSTLD="${{ github.workspace }}/kernel/common/ld-wrapper"
-      else
-        if [[ ${{ inputs.version }} == "android16-6.12" ]]; then
-          if [ "${{ inputs.bypass }}" = "false" ]; then
-            sed -i '/name = "kernel_aarch64",/a\    check_defconfig = "disabled",' common/BUILD.bazel
-          fi
-          tools/bazel run \
-            --config=fast \
-            --config=stamp \
-            --disk_cache=/home/runner/.cache/bazel \
-            //common:kernel_aarch64_dist \
-            -- --destdir=/home/runner/out
-        else
-          tools/bazel run \
-            --config=fast \
-            --config=stamp \
-            --disk_cache=/home/runner/.cache/bazel \
-            //common:kernel_aarch64_dist \
-            -- --dist_dir=/home/runner/out
-        fi
-      fi
+      set -euo pipefail
 
-      cat /home/runner/out/common/.config || true
+      # Muzel (Pixel 10) build using Bazel
+      tools/bazel run \
+        --config=fast \
+        --config=stamp \
+        --config=muzel \
+        //private/devices/google/muzel:lga_muzel_dist \
+        -- --dist_dir=/home/runner/out
+
+      echo "Build complete. Listing output..."
+      ls -la /home/runner/out/ || true
 
   - name: 'Gather Build Artifacts'
     shell: bash
@@ -98,8 +65,8 @@ runs:
           echo "Kernel Version:"
           strings "/home/runner/out/dist/Image" | grep -m1 "^Linux version "
         fi
-          exit 0
-        fi
+        exit 0
+      fi
       if [ -f "/home/runner/out/Image" ]; then
         echo "Found Image at /home/runner/out/Image"
         if [[ ${{ inputs.bypass }} == "true" ]]; then
@@ -110,6 +77,8 @@ runs:
         exit 0
       fi
 
+      echo "WARNING: No Image found in output. Checking out/ directory:"
+      find /home/runner/out -name "Image*" -o -name "*.img" 2>/dev/null || true
       exit 1
 
   - name: 'Patch AnyKernel3 for Bypass Hack'
@@ -120,4 +89,3 @@ runs:
       set -euo pipefail
       cp ${{ github.action_path }}/patches/bypass.patch "${{ github.workspace }}/AnyKernel3/bypass.patch"
       patch -p1 < bypass.patch
-

@@ -1,4 +1,4 @@
-name: Setup KernelSU
+y: Setup KernelSU
 description: Download and configure doubledashdot KernelSU fork with version tracking
 inputs:
   ksu_branch:
@@ -64,6 +64,9 @@ runs:
 
     - name: Enable Kernel Configs
       uses: ./.github/actions/set-kernel-config
-      with:
-        config_list: |
-          CONFIG_KSU=y
+      witwith       config_list: |
+          CONFIG_KSU=m
+          CONFIG_KPROBES=y
+          CONFIG_HAVE_KPROBES=y
+          CONFIG_KPROBE_EVENTS=y
+          CONFIG_KRETPROBES=y
